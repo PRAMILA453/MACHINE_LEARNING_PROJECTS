@@ -1,0 +1,105 @@
+# ==========================================================
+# WINE QUALITY - ORDINAL LOGISTIC REGRESSION
+# 4 ORDINAL CLASSES
+# ==========================================================
+!pip install mord -q
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from google.colab import files
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, confusion_matrix
+from mord import LogisticAT
+
+# ==========================================================
+# 1. UPLOAD AND LOAD CSV
+# ==========================================================
+uploaded = files.upload()
+df = pd.read_csv("winequality-red.csv", sep=";")
+print("First 5 Rows:")
+display(df.head())
+print("Shape:", df.shape)
+print("\nColumn Names:")
+print(df.columns.tolist())
+
+# ==========================================================
+# 2. INPUT AND OUTPUT
+# ==========================================================
+X = df.drop("quality", axis=1)
+y = df["quality"]
+
+# ==========================================================
+# 3. CONVERT QUALITY INTO 4 ORDERED CLASSES
+# ==========================================================
+def level(x):
+    if x <= 4:
+        return 0
+    elif x == 5:
+        return 1
+    elif x == 6:
+        return 2
+    else:
+        return 3
+
+y = y.apply(level)  # Apply level() to every quality value -convert it into 4 ordered  classes
+print("\nClass Distribution:")
+print(y.value_counts().sort_index())
+
+sns.countplot(x=y)
+plt.xticks([0,1,2,3], ["Poor","Average","Good","Excellent"])
+plt.xlabel("Wine Quality")
+plt.ylabel("Number of Wines")
+plt.title("Wine Quality - 4 Ordinal Classes")
+plt.show()
+
+# ==========================================================
+# 4. TRAIN TEST SPLIT
+# ==========================================================
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42, stratify=y)
+print("\nTraining rows:", X_train.shape[0])
+print("Testing rows:", X_test.shape[0])
+
+# ==========================================================
+# 5. STANDARD SCALING
+# ==========================================================
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# ==========================================================
+# 6. ORDINAL LOGISTIC REGRESSION
+# ==========================================================
+model = LogisticAT(alpha=0.01)
+model.fit(X_train, y_train)
+
+# ==========================================================
+# 7. PREDICTION AND ACCURACY
+# ==========================================================
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+print("\nOrdinal Logistic Regression Accuracy:",
+      round(accuracy * 100, 2), "%")
+
+# ==========================================================
+# 8. CONFUSION MATRIX
+# ==========================================================
+cm = confusion_matrix(y_test, y_pred)
+sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
+            xticklabels=["Poor","Average","Good","Excellent"],
+            yticklabels=["Poor","Average","Good","Excellent"])
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.title("Wine Quality - Ordinal Logistic Regression")
+plt.show()
+
+# ==========================================================
+# 9. NEW WINE PREDICTION
+# ==========================================================
+new = np.array([[7.0,0.50,0.00,2.0,0.08,15,40,0.997,3.20,0.60,9.0]])
+new_scaled = scaler.transform(new)
+prediction = model.predict(new_scaled)[0]
+levels = ["Poor","Average","Good","Excellent"]
+print("\nNew Wine Prediction:", levels[prediction])
