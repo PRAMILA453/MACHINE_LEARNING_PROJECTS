@@ -1,0 +1,256 @@
+# ============================================================
+# TV ADVERTISING → SALES
+# SIMPLE LINEAR REGRESSION
+# ============================================================
+
+# 1. IMPORT LIBRARIES
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from google.colab import files
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error,mean_squared_error,r2_score
+
+
+# ============================================================
+# 2. UPLOAD AND READ DATASET
+# ============================================================
+
+uploaded=files.upload()
+df=pd.read_csv("Advertising.csv")
+
+print("\nFIRST 5 ROWS")
+print(df.head())
+
+
+# ============================================================
+# 3. SELECT REQUIRED COLUMNS
+# ============================================================
+
+df=df[["TV","sales"]]
+
+print("\nSELECTED COLUMNS")
+print(df.head())
+
+
+
+# ============================================================
+# 4. BASIC STATISTICS
+# ============================================================
+
+print("\nMEAN")
+print(df.mean())
+
+print("\nMEDIAN")
+print(df.median())
+
+print("\nMAXIMUM")
+print(df.max())
+
+print("\nMINIMUM")
+print(df.min())
+
+
+# ============================================================
+# 5. CORRELATION
+# ============================================================
+
+print("\nCORRELATION")
+print(df.corr())
+
+
+# ============================================================
+# 6. ACTUAL DATA: TV vs SALES
+# ============================================================
+
+plt.scatter(df["TV"],df["sales"])
+plt.xlabel("TV Advertising")
+plt.ylabel("Sales")
+plt.title("TV Advertising vs Sales")
+plt.show()
+
+
+# ============================================================
+# 7. DEFINE INPUT (X) AND OUTPUT (y)
+# ============================================================
+
+X=df[["TV"]]       # Input
+y=df["sales"]      # Actual Output
+
+
+# ============================================================
+# 8. SPLIT DATA INTO TRAINING AND TESTING
+# ============================================================
+
+X_train,X_test,y_train,y_test=train_test_split(
+    X,y,test_size=0.2,random_state=42
+)
+
+print("\nDATA SPLIT")
+print("Total rows:",len(df))
+print("Training rows:",len(X_train))
+print("Testing rows:",len(X_test))
+
+
+# ============================================================
+# 9. TRAIN THE LINEAR REGRESSION MODEL
+# ============================================================
+
+model=LinearRegression()
+model.fit(X_train,y_train)
+
+
+# ============================================================
+# 10. REGRESSION EQUATION
+# ============================================================
+
+print("\nREGRESSION EQUATION")
+
+print("Intercept:",model.intercept_)
+print("Slope:",model.coef_[0])
+
+print(
+    "Sales =",
+    model.intercept_,
+    "+",
+    model.coef_[0],
+    "* TV"
+)
+
+
+# ============================================================
+# 11. PREDICT SALES FOR TEST DATA
+# ============================================================
+
+y_pred=model.predict(X_test)
+
+
+# ============================================================
+# 12. ACTUAL vs PREDICTED SALES
+# ============================================================
+
+comparison=pd.DataFrame({
+    "Actual":y_test.values,
+    "Predicted":y_pred})
+
+comparison["Difference"]=comparison["Actual"]-comparison["Predicted"]
+
+print("\nACTUAL vs PREDICTED")
+print(comparison)
+
+
+# ============================================================
+# 13. MODEL EVALUATION
+# ============================================================
+
+mae=mean_absolute_error(y_test,y_pred)
+mse=mean_squared_error(y_test,y_pred)
+rmse=mean_squared_error(y_test,y_pred)**0.5
+r2=r2_score(y_test,y_pred)
+
+print("\nMODEL EVALUATION")
+
+print("MAE:",mae)
+print("MSE:",mse)
+print("RMSE:",rmse)
+print("R²:",r2)
+print("R² Percentage:",r2*100)
+
+
+# ============================================================
+# 14. ACTUAL vs PREDICTED GRAPH
+# ============================================================
+
+plt.figure(figsize=(10,5))
+
+plt.plot(y_test.values,label="Actual Sales")
+plt.plot(y_pred,label="Predicted Sales")
+
+plt.xlabel("Test Data")
+plt.ylabel("Sales")
+plt.title("Actual vs Predicted Sales")
+plt.legend()
+plt.show()
+
+
+# ============================================================
+# 15. REGRESSION LINE
+# ============================================================
+
+# Arrange TV values from small to large
+sorted_df=df.sort_values("TV")
+
+# Predict Sales for every TV value
+predicted_line=model.predict(sorted_df[["TV"]])
+
+plt.scatter(
+    df["TV"],
+    df["sales"],
+    label="Actual Data"
+)
+
+plt.plot(
+    sorted_df["TV"],
+    predicted_line,
+    label="Regression Line"
+)
+
+plt.scatter(
+    sorted_df["TV"],
+    predicted_line,
+    color="red",
+    label="Predicted Sales"
+)
+
+plt.xlabel("TV Advertising")
+plt.ylabel("Sales")
+plt.title("TV Advertising vs Sales - Regression Line")
+plt.legend()
+plt.show()
+
+
+# ============================================================
+# 16. NEW TV ADVERTISING PREDICTION
+# ============================================================
+
+tv_value=float(input("\nEnter TV advertising amount: "))
+
+prediction=model.predict(
+    pd.DataFrame({"TV":[tv_value]})
+)
+
+print("\nNEW PREDICTION")
+print("TV Advertising:",tv_value)
+print("Predicted Sales:",prediction)
+
+
+# ============================================================
+# 17. NEW PREDICTION ON REGRESSION GRAPH
+# ============================================================
+
+plt.scatter(
+    df["TV"],
+    df["sales"],
+    label="Actual Data"
+)
+
+plt.plot(
+    sorted_df["TV"],
+    predicted_line,
+    label="Regression Line"
+)
+
+plt.scatter(
+    tv_value,
+    prediction[0],
+    color="red",
+    s=500,
+    label="New Prediction"
+)
+
+plt.xlabel("TV Advertising")
+plt.ylabel("Sales")
+plt.title("New TV Advertising Prediction")
+plt.legend()
+plt.show()
