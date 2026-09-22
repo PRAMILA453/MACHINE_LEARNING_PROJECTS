@@ -1,0 +1,108 @@
+# ==========================================================
+# BANK CUSTOMER CHURN PREDICTION - LOGISTIC REGRESSION
+# ==========================================================
+
+# 1. IMPORT LIBRARIES
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from google.colab import files
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, roc_curve, auc
+
+# 2. UPLOAD CSV FILE
+files.upload()
+df = pd.read_csv("Churn_Modelling.csv")
+#df = df.head(3000)  # Use first 3000 customers
+print("Shape:", df.shape)
+print(df.head())
+
+# 3. UNDERSTAND DATA
+print(df.info())
+print(df.isnull().sum())
+print(df.describe())
+print("Geography:", df["Geography"].unique())      # Shows different countries
+print("Gender:", df["Gender"].unique())              # Shows different genders
+print("Churn:", df["Exited"].value_counts())         # Counts customers who stayed and left
+
+# 4. VISUALIZATION
+sns.countplot(x="Exited", data=df)
+plt.title("Customer Churn")
+plt.xlabel("Exited (0 = Stay, 1 = Leave)")
+plt.show()
+sns.countplot(x="Geography", data=df)
+plt.title("Customers by Country")
+plt.show()
+sns.histplot(df["Age"], bins=20)
+plt.title("Age Distribution")
+plt.show()
+
+# 5. DATA PREPROCESSING
+df = df.drop(["RowNumber", "CustomerId", "Surname"], axis=1)  # Remove unnecessary columns
+df = pd.get_dummies(df, columns=["Geography", "Gender"], drop_first=True)  # Convert text to numbers
+X = df.drop("Exited", axis=1)  # Input features
+y = df["Exited"]  # Output
+
+# 6. TRAIN-TEST SPLIT
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42)
+print("Training rows:", X_train.shape[0])
+print("Testing rows:", X_test.shape[0])
+
+# 7. FEATURE SCALING
+scaler = StandardScaler()  # Scale all feature values
+X_train = scaler.fit_transform(X_train)  # Learn mean and SD, then scale training data
+X_test = scaler.transform(X_test)  # Scale test data using training mean and SD
+
+# 8. TRAIN LOGISTIC REGRESSION
+model = LogisticRegression()
+model.fit(X_train, y_train)
+print("Model trained successfully!")
+
+# 9. PREDICTION
+y_pred = model.predict(X_test)
+print("First 10 Predictions:", y_pred[:10])
+
+# 10. ACCURACY
+accuracy = accuracy_score(y_test, y_pred)
+print("Accuracy:", round(accuracy * 100, 2), "%")
+
+# 11. CONFUSION MATRIX
+cm = confusion_matrix(y_test, y_pred)
+print("Confusion Matrix:")
+print(cm)
+sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")  # annot(Show confusion matrix values)-fmt(integer)
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.title("Confusion Matrix")
+plt.show()
+
+# 12. CLASSIFICATION REPORT
+print("Classification Report:")
+print(classification_report(y_test, y_pred))
+
+# 13. ROC CURVE
+y_prob = model.predict_proba(X_test)[:, 1]  # : = all customers, 1 = probability of leaving
+fpr, tpr, threshold = roc_curve(y_test, y_prob)  # Calculate FPR and TPR at different thresholds
+roc_auc = auc(fpr, tpr)  # Calculate AUC
+plt.plot(fpr, tpr, label="AUC = %.2f" % roc_auc)  # Draw ROC curve-%string foramt not modulus
+plt.plot([0, 1], [0, 1], "--")  # Draw random prediction line
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve")
+plt.legend()
+plt.show()
+print("AUC:", round(roc_auc, 3))
+
+# 14. NEW CUSTOMER PREDICTION
+new_customer = [[650, 40, 5, 60000, 2, 1, 1, 50000, 0, 0, 1]]  # Enter new customer values
+new_customer = scaler.transform(new_customer)  # Scale new customer values
+prob = model.predict_proba(new_customer)[0][1]  # Take first customer's probability of leaving
+threshold = 0.5  # Change to 0.3, 0.5, 0.7, etc.
+print("Churn Probability:", round(prob, 2))
+print("Threshold:", threshold)
+if prob >= threshold:
+    print("Customer will leave")
+else:
+    print("Customer will stay")
