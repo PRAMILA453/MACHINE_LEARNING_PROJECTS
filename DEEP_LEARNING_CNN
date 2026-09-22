@@ -1,0 +1,333 @@
+# 🫁 PNEUMONIA DETECTION USING CNN
+# ONE CNN ALGORITHM + DIFFERENT HYPERPARAMETERS
+
+# ============================================================
+# 1. IMPORT LIBRARIES
+# ============================================================
+import tensorflow as tf
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+from google.colab import files
+
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D,MaxPooling2D,Flatten,Dense,Dropout
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping
+from sklearn.metrics import accuracy_score,confusion_matrix
+
+
+# ============================================================
+# 2. UPLOAD DATASET
+# ============================================================
+uploaded=files.upload()       # Select CNN_Pneumonia.zip
+
+import zipfile
+import os
+
+with zipfile.ZipFile("CNN_Pneumonia.zip","r") as zip_ref:
+    zip_ref.extractall("/content")
+
+print("Dataset extracted successfully!")
+
+print("\nMain Folder:")
+print(os.listdir("/content/CNN_Pneumonia"))
+
+print("\nChest X-Ray:")
+print(os.listdir("/content/CNN_Pneumonia/chest_xray"))
+
+
+# ============================================================
+# 3. DATASET PATH
+# ============================================================
+train_path="/content/CNN_Pneumonia/chest_xray/train"
+test_path="/content/CNN_Pneumonia/chest_xray/test"
+
+
+# ============================================================
+# 4. PREPARE IMAGE DATA
+# ============================================================
+datagen=ImageDataGenerator(
+    rescale=1./255,              # Convert pixel values from 0-255 to 0-1
+    validation_split=0.2         # Keep 20% of training images for validation
+)
+
+train_data=datagen.flow_from_directory(
+    train_path,                  # Path to the training image folder
+    target_size=(150,150),       # Resize every image to 150x150 pixels
+    batch_size=32,               # Process 32 images at a time
+    class_mode="binary",         # Use binary labels for 2 classes
+    subset="training"            # Use 80% of images for training
+)
+
+val_data=datagen.flow_from_directory(
+    train_path,                  # Use the same training folder
+    target_size=(150,150),       # Resize images to 150x150 pixels
+    batch_size=32,               # Process 32 images at a time
+    class_mode="binary",         # Use binary labels for 2 classes
+    subset="validation"          # Use 20% of images for validation
+)
+
+test_datagen=ImageDataGenerator(
+    rescale=1./255               # Normalize test image pixels to 0-1
+)
+
+test_data=test_datagen.flow_from_directory(
+    test_path,                   # Path to the test image folder
+    target_size=(150,150),       # Resize test images to 150x150 pixels
+    batch_size=32,               # Process 32 images at a time
+    class_mode="binary",         # Use binary labels for 2 classes
+    shuffle=False                # Keep original order for evaluation
+)
+
+print("\nClass Indices:",train_data.class_indices)  # Display class names and their assigned numbers
+                                                     #Class Indices: {'NORMAL': 0, 'PNEUMONIA': 1}
+# ============================================================
+# 5. SHOW SAMPLE IMAGES
+# ============================================================
+images,labels=next(train_data)                 # Get one batch of images and their labels
+
+plt.figure(figsize=(7,7))                      # Create a 7x7 inch figure
+for i in range(4):                             # Display the first 4 images
+    plt.subplot(2,2,i+1)                        # Create a 2x2 grid for the images
+    plt.imshow(images[i])                      # Display the current image
+    plt.title("PNEUMONIA" if labels[i]==1      # Show PNEUMONIA if label is 1
+              else "NORMAL")                   # Otherwise show NORMAL
+    plt.axis("off")                            # Hide x-axis and y-axis
+
+plt.show()
+# ============================================================
+# 6. HYPERPARAMETERS
+# ============================================================
+
+# COMBINATION 1
+#filters1=32
+#filters2=64
+#dense_neurons=128
+#dropout=0.5
+#learning_rate=0.001
+#epochs=10
+#batch_size=32
+
+# COMBINATION 2
+filters1=64
+filters2=128
+dense_neurons=128
+dropout=0.5
+learning_rate=0.001
+epochs=10
+batch_size=32
+
+# COMBINATION 3
+#filters1=32
+#filters2=64
+#dense_neurons=256
+#dropout=0.3
+#learning_rate=0.001
+#epochs=10
+#batch_size=32
+
+# COMBINATION 4
+#filters1=64
+#filters2=128
+#dense_neurons=256
+#dropout=0.3
+#learning_rate=0.0001
+#epochs=15
+#batch_size=32
+
+# COMBINATION 5
+#filters1=32
+#filters2=64
+#dense_neurons=128
+#dropout=0.5
+#learning_rate=0.0005
+#epochs=15
+#batch_size=16
+
+
+# ============================================================
+# 7. BUILD CNN
+# ============================================================
+model=Sequential()                              # Create CNN model
+
+model.add(Conv2D(
+    filters1,(3,3),                             # Number of filters and filter size
+    activation="relu",                          # Add ReLU activation
+    input_shape=(150,150,3)                     # Input image size: 150x150 RGB
+))
+
+model.add(MaxPooling2D(2,2))                    # Reduce image size
+model.add(Conv2D(
+    filters2,(3,3),                             # Add second convolution layer
+    activation="relu"                           # Add ReLU activation
+))
+
+model.add(MaxPooling2D(2,2))                    # Reduce image size again
+model.add(Flatten())                            # Convert feature maps into 1D
+model.add(Dense(
+    dense_neurons,                              # Number of neurons
+    activation="relu"                           # Add ReLU activation
+))
+
+model.add(Dropout(dropout))                     # Randomly drop neurons to reduce overfitting
+model.add(Dense(
+    1,                                          # One output neuron
+    activation="sigmoid"                        # Output probability between 0 and 1
+))
+# ============================================================
+# 8. COMPILE CNN
+# ============================================================
+model.compile(
+    optimizer=Adam(learning_rate=learning_rate),
+    loss="binary_crossentropy",
+    metrics=["accuracy"]
+)
+
+
+# ============================================================
+# 9. EARLY STOPPING
+# ============================================================
+early_stop=EarlyStopping(
+    monitor="val_loss",
+    patience=3,
+    restore_best_weights=True
+)
+
+
+# ============================================================
+# 10. TRAIN CNN
+# ============================================================
+history=model.fit(
+    train_data,
+    epochs=epochs,
+    batch_size=batch_size,
+    validation_data=val_data,
+    callbacks=[early_stop],
+    verbose=1
+)
+
+
+# ============================================================
+# 11. PREDICTION
+# ============================================================
+probability=model.predict(test_data)
+y_pred=(probability>=0.5).astype(int).ravel()#ravel() simply converts the result into a 1-dimensional array.
+
+
+# ============================================================
+# 12. ACCURACY
+# ============================================================
+accuracy=accuracy_score(
+    test_data.classes,       # Actual labels of test images- #Actual:     0  1  1  0 #Predicted:  0  1  0  0
+    y_pred                   # Predicted labels from the CNN
+)
+
+print("\n===== FINAL RESULT =====")
+print("Accuracy:",round(accuracy*100,2),"%")
+
+
+# ============================================================
+# 13. CONFUSION MATRIX
+# ============================================================
+print("\nConfusion Matrix:")
+
+cm=confusion_matrix(
+    test_data.classes,
+    y_pred
+)
+
+print(cm)
+
+sns.heatmap(
+    cm,
+    annot=True,
+    fmt="d",
+    xticklabels=["NORMAL","PNEUMONIA"],
+    yticklabels=["NORMAL","PNEUMONIA"]
+)
+
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.title("CNN Confusion Matrix")
+plt.show()
+
+
+# ============================================================
+# 14. ACCURACY GRAPH
+# ============================================================
+plt.figure(figsize=(7,4))
+
+plt.plot(
+    history.history["accuracy"],
+    label="Training Accuracy"
+)
+
+plt.plot(
+    history.history["val_accuracy"],
+    label="Validation Accuracy"
+)
+
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.title("CNN Accuracy")
+plt.legend()
+
+plt.show()
+
+
+# ============================================================
+# 15. LOSS GRAPH
+# ============================================================
+plt.figure(figsize=(7,4))
+
+plt.plot(
+    history.history["loss"],
+    label="Training Loss"
+)
+
+plt.plot(
+    history.history["val_loss"],
+    label="Validation Loss"
+)
+
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.title("CNN Loss")
+plt.legend()
+
+plt.show()
+
+
+# ============================================================
+# 16. UNDERFITTING / GOOD FIT / OVERFITTING
+# ============================================================
+print("""
+UNDERFITTING:
+Training Accuracy = Low
+Validation Accuracy = Low
+Training Loss = High
+Validation Loss = High
+
+GOOD FIT:
+Training Accuracy = High
+Validation Accuracy = High
+Training Loss = Low
+Validation Loss = Low and close to training loss
+
+OVERFITTING:
+Training Accuracy = Very High
+Validation Accuracy = Much Lower
+Training Loss = Very Low
+Validation Loss = High or increasing
+""")
+
+
+# ============================================================
+# 17. SAVE MODEL
+# ============================================================
+model.save("pneumonia_cnn_model.keras")
+
+print("Model Saved Successfully!")
