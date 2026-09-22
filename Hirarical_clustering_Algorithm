@@ -1,0 +1,129 @@
+# ============================================
+# HIERARCHICAL CLUSTERING - MALL CUSTOMERS
+# ============================================
+
+# Import libraries
+import pandas as pd
+import matplotlib.pyplot as plt
+from google.colab import files
+from scipy.cluster.hierarchy import dendrogram, linkage
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.neighbors import KNeighborsClassifier
+
+# ============================================
+# 1. Upload CSV File
+# ============================================
+uploaded = files.upload()                  # Choose mall.csv
+df = pd.read_csv("mall.csv")               # Read dataset
+print(df.head())
+print(df.shape)
+
+# ============================================
+# 2. Select Features
+# ============================================
+X = df[["Annual Income (k$)",               # Customer income
+        "Spending Score (1-100)"]]          # Customer spending score
+
+# ============================================
+# 3. Dendrogram
+# ============================================
+link = linkage(X, method="ward")            # Ward joins clusters keeping them compact
+plt.figure(figsize=(10, 5))                 #Customer A: Income 40, Spending 50Customer B: Income 42, Spending 52
+                                            #They are close → Ward will likely join them
+
+dendrogram(link)                             # Show hierarchy of customers
+plt.axhline(y=100, linestyle="--",           # Draw cut line at distance 100
+            label="Cut Line")
+plt.title("Dendrogram")
+plt.xlabel("Customers")
+plt.ylabel("Distance")
+plt.legend()
+plt.show()
+
+# ============================================
+# 4. Apply Hierarchical Clustering
+# ============================================
+hc = AgglomerativeClustering(
+    n_clusters=5,                            # Create 5 groups
+    linkage="ward"                           # Use Ward method
+)
+df["Cluster"] = hc.fit_predict(X)            # Assign each customer to cluster
+
+# Show incomes of all customers in each cluster
+for i in sorted(df["Cluster"].unique()):     # Get each cluster number
+    print("\nCluster", i)                    # Display cluster number
+    print(df[df["Cluster"] == i][            # Select customers in that cluster
+        ["CustomerID",                       # Show customer ID
+         "Annual Income (k$)",               # Show customer income
+         "Spending Score (1-100)"]            # Show spending score
+    ])
+
+print(df.head())
+
+# ============================================
+# 5. Cluster Analysis
+# ============================================
+cluster_summary = df.groupby("Cluster")[[
+    "Annual Income (k$)",
+    "Spending Score (1-100)"
+]].mean()                                    # Calculate average income and spending
+
+cluster_summary.columns = [
+    "Average Income",
+    "Average Spending Score"
+]
+
+print("\nAverage values for each cluster:")
+print(cluster_summary)
+
+# ============================================
+# 6. Customer Segment Names
+# ============================================
+for i in cluster_summary.index:
+    income = cluster_summary.loc[i, "Average Income"]            # Get average income
+    spending = cluster_summary.loc[i, "Average Spending Score"] # Get average spending
+
+    if income > 60 and spending > 60:
+        name = "High Income - High Spending"
+    elif income > 60 and spending < 60:
+        name = "High Income - Low Spending"
+    elif income < 60 and spending > 60:
+        name = "Low Income - High Spending"
+    elif income < 60 and spending < 60:
+        name = "Low Income - Low Spending"
+    else:
+        name = "Average Customers"
+
+    print("Cluster", i, ":", name)
+
+# ============================================
+# 7. Visualization
+# ============================================
+plt.figure(figsize=(7, 5))
+plt.scatter(
+    X.iloc[:, 0],                            # Income
+    X.iloc[:, 1],                            # Spending score
+    c=df["Cluster"],                         # Color according to cluster
+    s=70
+)
+plt.xlabel("Annual Income (k$)")
+plt.ylabel("Spending Score (1-100)")
+plt.title("Customer Segments - Hierarchical Clustering")
+plt.grid()
+plt.show()
+
+# ============================================
+# 8. Predict New Customer (Using KNN)
+# ============================================
+# KNN predicts the cluster of a new customer
+knn = KNeighborsClassifier(
+    n_neighbors=5                            # Look at 5 nearest customers
+)
+knn.fit(X, df["Cluster"])                    # Learn existing clusters
+
+income = float(input("Enter Annual Income (k$): "))
+score = float(input("Enter Spending Score: "))
+new_customer = [[income, score]]             # New customer data
+prediction = knn.predict(new_customer)       # Predict cluster
+
+print("Customer belongs to Cluster:", prediction[0])
