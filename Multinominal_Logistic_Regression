@@ -1,0 +1,109 @@
+# ==========================================================
+# IRIS FLOWER - MULTINOMIAL LOGISTIC REGRESSION
+# ==========================================================
+# Multinomial Logistic Regression classifies data into more than two classes.
+# Four flower features are used to predict Setosa, Versicolor, or Virginica.
+# ==========================================================
+# 1. IMPORT LIBRARIES
+# ==========================================================
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from google.colab import files
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, label_binarize
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, ConfusionMatrixDisplay, roc_curve, auc
+
+# ==========================================================
+# 2. LOAD DATA
+# ==========================================================
+uploaded = files.upload()
+df = pd.read_csv("iris.csv")
+df["species"] = df["species"].map({"setosa":0, "versicolor":1, "virginica":2})
+print("First 5 Rows:\n", df.head())
+print("\nShape:", df.shape)
+print("\nMissing Values:\n", df.isnull().sum())
+print("\nData Types:\n", df.dtypes)
+print("\nClasses:\n", df["species"].value_counts())
+
+# ==========================================================
+# 3. VISUALIZE DATA
+# ==========================================================
+sns.pairplot(df, hue="species")
+plt.show()
+
+# ==========================================================
+# 4. PREPARE DATA
+# ==========================================================
+X = df.drop("species", axis=1)
+y = df["species"]
+
+# ==========================================================
+# 5. SPLIT DATA
+# ==========================================================
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# ==========================================================
+# 6. SCALE DATA
+# ==========================================================
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# ==========================================================
+# 7. TRAIN MODEL
+# ==========================================================
+model = LogisticRegression(max_iter=200)
+model.fit(X_train, y_train)
+
+# ==========================================================
+# 8. TEST PREDICTION
+# ==========================================================
+y_pred = model.predict(X_test)
+print("\nAccuracy:", round(accuracy_score(y_test, y_pred)*100, 2), "%")
+
+# ==========================================================
+# 9. CONFUSION MATRIX
+# ==========================================================
+cm = confusion_matrix(y_test, y_pred)
+print("\nConfusion Matrix:\n", cm)
+ConfusionMatrixDisplay(cm, display_labels=["Setosa","Versicolor","Virginica"]).plot()
+plt.title("Confusion Matrix")
+plt.show()
+
+# ==========================================================
+# 10. CLASSIFICATION REPORT
+# ==========================================================
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred, target_names=["Setosa","Versicolor","Virginica"]))
+
+# ==========================================================
+# 11. ROC CURVE
+# ==========================================================
+names = ["Setosa","Versicolor","Virginica"]
+y_bin = label_binarize(y_test, classes=[0,1,2])
+y_prob = model.predict_proba(X_test)
+
+fpr, tpr, _ = roc_curve(y_bin[:,0], y_prob[:,0])
+plt.plot(fpr, tpr, label="Setosa")
+fpr, tpr, _ = roc_curve(y_bin[:,1], y_prob[:,1])
+plt.plot(fpr, tpr, label="Versicolor")
+fpr, tpr, _ = roc_curve(y_bin[:,2], y_prob[:,2])
+plt.plot(fpr, tpr, label="Virginica")
+plt.plot([0,1], [0,1], "--")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("Multiclass ROC Curve")
+plt.legend()
+plt.show()
+
+# ==========================================================
+# 12. NEW FLOWER PREDICTION
+# ==========================================================
+new_flower = [[5.1,3.5,1.4,0.2]]
+new_flower = scaler.transform(new_flower)
+prediction = model.predict(new_flower)
+probability = model.predict_proba(new_flower)
+print("\nNew Flower Prediction:", names[prediction[0]])
+print("Probabilities:", probability[0])
