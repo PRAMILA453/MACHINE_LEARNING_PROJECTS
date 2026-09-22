@@ -1,0 +1,134 @@
+# ============================================================
+# MALL CUSTOMERS - K-MEANS vs K-MEANS++
+# ============================================================
+
+# 1. IMPORT LIBRARIES
+import pandas as pd
+import matplotlib.pyplot as plt
+from google.colab import files
+from sklearn.cluster import KMeans
+
+# ============================================================
+# 2. UPLOAD DATASET
+# ============================================================
+uploaded = files.upload()                 # Choose mall.csv
+df = pd.read_csv("mall.csv")              # Read the dataset
+print(df.head())                          # Show first 5 rows
+
+# ============================================================
+# 3. SELECT FEATURES
+# ============================================================
+X = df[["Annual Income (k$)",             # Customer income
+        "Spending Score (1-100)"]]        # Customer spending score
+
+# ============================================================
+# 4. ELBOW METHOD
+# ============================================================
+wcss = []                                 # Store WCSS value.WCSS = sum of squared distances from customers to their cluster center
+for k in range(1, 11):                    # Try 1 to 10 clusters
+    model = KMeans(
+        n_clusters=k,                     # Number of groups
+        init="random",                    # Start centers randomly
+        n_init=10,                        # Try 10 different starts
+        random_state=42                   # Keep result same every time
+    )
+    model.fit(X)                          # Create the groups
+    wcss.append(model.inertia_)           # WCSS = total squared distance from customers to center
+
+# ============================================================
+# 5. ELBOW GRAPH
+# ============================================================
+plt.plot(range(1, 11), wcss, marker="o")  # Plot K and WCSS
+plt.xlabel("Number of Clusters (K)")      # X-axis
+plt.ylabel("WCSS")                        # Total squared distance
+plt.title("Elbow Method")                 # Graph title
+plt.grid()                                # Show grid
+plt.show()                                # Display graph
+
+# ============================================================
+# 6. K-MEANS
+# ============================================================
+# Unsupervised learning = no target/output column
+# Random starting centers
+
+kmeans = KMeans(
+    n_clusters=5,                         # Create 5 groups
+    init="random",                        # Random starting centers
+    n_init=10,                            # Try 10 different starts
+    random_state=42                       # Keep result same every time
+)
+
+df["KMeans_Group"] = kmeans.fit_predict(X) + 1  # Assign each customer to a cluster and add 1 so groups start from 1
+centers = kmeans.cluster_centers_         # Get K-Means center points
+
+
+# ============================================================
+# 7. K-MEANS++
+# ============================================================
+# Unsupervised learning = no target/output column
+# Smarter starting centers
+
+kplus = KMeans(
+    n_clusters=5,                         # Create 5 groups
+    init="k-means++",                     # Choose smarter starting centers
+    n_init=10,                            # Try 10 different starts
+    random_state=42                       # Keep result same every time
+)
+
+df["KMeansPlus_Group"] = kplus.fit_predict(X) + 1
+centers_plus = kplus.cluster_centers_     # Get K-Means++ center points
+
+# Assign each customer to a K-Means++ group
+
+# ============================================================
+# 8. COMPARE GROUPS
+# ============================================================
+print(df[["CustomerID", "Annual Income (k$)",
+          "Spending Score (1-100)",
+          "KMeans_Group", "KMeansPlus_Group"]].head(10))
+
+# ============================================================
+# 9. K-MEANS GRAPH
+# ============================================================
+plt.scatter(
+    X.iloc[:,0],                          # All rows, first column
+    X.iloc[:,1],                          # All rows, second column
+    c=df["KMeans_Group"],                 # Color according to group
+    cmap="viridis",                       # Color scheme
+    s=70                                  # Size of customer points
+)
+
+plt.scatter(
+    centers[:,0], centers[:,1],           # Center coordinates
+    marker="X", s=250,                    # Show centers as X
+    label="Centers"
+)
+
+plt.title("K-Means Clustering")
+plt.xlabel("Annual Income (k$)")
+plt.ylabel("Spending Score (1-100)")
+plt.legend()
+plt.show()
+
+# ============================================================
+# 10. K-MEANS++ GRAPH
+# ============================================================
+plt.scatter(
+    X.iloc[:,0],                          # All rows, first column
+    X.iloc[:,1],                          # All rows, second column
+    c=df["KMeansPlus_Group"],             # Color according to group
+    cmap="plasma",                        # Color scheme
+    s=70                                  # Size of customer points
+)
+
+plt.scatter(
+    centers_plus[:,0], centers_plus[:,1], # Center coordinates
+    marker="X", s=250,                    # Show centers as X
+    label="Centers"
+)
+
+plt.title("K-Means++ Clustering")
+plt.xlabel("Annual Income (k$)")
+plt.ylabel("Spending Score (1-100)")
+plt.legend()
+plt.show()
